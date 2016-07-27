@@ -67,3 +67,20 @@ func TestCpClassMethod(t *testing.T) {
 		ole.DispatchMessage(&m)
 	}
 }
+
+/*
+=== RUN   TestCpClassStruct
+&{<nil> <nil> <nil> <nil> <nil> 0}
+&{0x3276b20c 0x3276b20c <nil> <nil> <nil> 0}
+--- PASS: TestCpClassStruct (0.01s)
+=== RUN   TestCpClassMethod
+bf blockrequest
+bf getheadervalue
+기아차
+bind event
+rq
+wait event
+SK하이닉스
+--- PASS: TestCpClassMethod (0.08s)
+PASS
+*/
