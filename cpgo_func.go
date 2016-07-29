@@ -1,9 +1,20 @@
 package cpgo
 
 import (
+	//	"fmt"
+
 	ole "github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
 )
+
+// 사이보스플러스 GetDibStatus
+func (c *CpClass) GetDibStatus() int16 {
+	r := oleutil.MustCallMethod(c.obj, "GetDibStatus")
+	if ret, ok := r.Value().(int16); ok {
+		return int16(ret)
+	}
+	panic(r)
+}
 
 // 사이보스플러스 SetInputValue함수 Wrapper
 func (c *CpClass) SetInputValue(typ int, val interface{}) {
@@ -21,6 +32,27 @@ func (c *CpClass) Request() {
 		panic("err")
 	}
 	_ = oleutil.MustCallMethod(c.obj, "Request")
+}
+
+// 사이보스플러스 Subscribe 함수 Wrapper
+func (c *CpClass) Subscribe() {
+	if c.evnt == nil {
+		panic("err")
+	}
+	_ = oleutil.MustCallMethod(c.obj, "Subscribe")
+}
+
+// 사이보스플러스 SubscribeLastest 함수 Wrapper
+func (c *CpClass) SubscribeLastest() {
+	if c.evnt == nil {
+		panic("err")
+	}
+	_ = oleutil.MustCallMethod(c.obj, "SubscribeLastest")
+}
+
+// 사이보스플러스 Unsubscribe 함수 Wrapper
+func (c *CpClass) Unsubscribe() {
+	_ = oleutil.MustCallMethod(c.obj, "Unsubscribe")
 }
 
 // 사이보스플러스 GetHeaderValue Wrapper

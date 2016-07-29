@@ -68,6 +68,29 @@ func TestCpClassMethod(t *testing.T) {
 	}
 }
 
+func TestCpRequest(t *testing.T) {
+	ole.CoInitialize(0)
+	defer ole.CoUninitialize()
+
+	tmp := &CpClass{}
+	tmp.Create("DSCBO1.StockMst")
+	defer tmp.Release()
+
+	evnt := &RqTestStruct{}
+	tmp.BindEvent(evnt)
+
+	tmp.SetInputValue(0, "A000660")
+	tmp.Request()
+
+	fmt.Println("wait event")
+	var m ole.Msg
+	for tmp.evnt.ref != 0 {
+		time.Sleep(1)
+		ole.GetMessage(&m, 0, 0, 0)
+		ole.DispatchMessage(&m)
+	}
+}
+
 /*
 === RUN   TestCpClassStruct
 &{<nil> <nil> <nil> <nil> <nil> 0}
