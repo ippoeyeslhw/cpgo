@@ -2,11 +2,19 @@ package cpgo
 
 import (
 	//	"fmt"
+	"sync"
 	"syscall"
 	"unsafe"
 
 	ole "github.com/go-ole/go-ole"
 	//"github.com/go-ole/go-ole/oleutil"
+)
+
+// peekmessage 로드
+var (
+	user32, _       = syscall.LoadLibrary("user32.dll")
+	pPeekMessage, _ = syscall.GetProcAddress(user32, "PeekMessageW")
+	//pDispatchMessage, _ = syscall.GetProcAddress(user32, "DispatchMessage")
 )
 
 // 사이보스플러스의 콜백메서드 인터페이스
@@ -53,13 +61,19 @@ func (c *CpClass) Create(name string) {
 	if err != nil {
 		panic(err)
 	}
+	// _IDib interface
+	iid, err := ole.CLSIDFromString("{33518a10-0931-11d4-8231-00105a7c4f8c}")
+	if err != nil {
+		panic(err)
+	}
 	// unknown
 	c.unk, err = ole.CreateInstance(clsid, ole.IID_IUnknown)
 	if err != nil {
 		panic(err)
 	}
 	// get obj
-	c.obj, err = c.unk.QueryInterface(ole.IID_IDispatch)
+	//c.obj, err = c.unk.QueryInterface(ole.IID_IDispatch)
+	c.obj, err = c.unk.QueryInterface(iid)
 	if err != nil {
 		panic(err)
 	}
@@ -217,4 +231,41 @@ func dispInvoke(this *ole.IDispatch, dispid int, riid *ole.GUID, lcid int, flags
 		}
 	}
 	return ole.E_NOTIMPL
+}
+
+//
+
+func PeekMessage(msg *ole.Msg, hwnd uint32, MsgFilterMin uint32, MsgFilterMax uint32, RemoveMsg uint32) (ret int32, err error) {
+	r0, _, err := syscall.Syscall6(uintptr(pPeekMessage), 5,
+		uintptr(unsafe.Pointer(msg)),
+		uintptr(hwnd),
+		uintptr(MsgFilterMin),
+		uintptr(MsgFilterMax),
+		uintptr(RemoveMsg),
+		0)
+
+	ret = int32(r0)
+	return
+}
+
+func PumpWaitingMessage() int32 {
+	ret := int32(0)
+
+	var msg ole.Msg
+
+	mutex := &sync.Mutex{}
+	mutex.Lock()
+	for {
+		r, _ := PeekMessage(&msg, 0, 0, 0, 1)
+		if r == 0 {
+			break
+		}
+		if msg.Message == 0x0012 { // WM_QUIT
+			ret = int32(1)
+			break
+		}
+		ole.DispatchMessage(&msg)
+	}
+	mutex.Unlock()
+	return ret
 }
