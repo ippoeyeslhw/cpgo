@@ -91,7 +91,52 @@ func TestPumpWaitingMessage(t *testing.T) {
 		time.Sleep(1)
 		PumpWaitingMessage()
 	}
+}
 
+type SubTestStruct struct {
+	cont bool
+	cnt  int
+}
+
+func (s *SubTestStruct) Received(c *CpClass) {
+
+	fmt.Printf("(%f)%d , (%f)%d\n",
+		c.GetHeaderValue(14).Value(), // 1차 매수호가
+		c.GetHeaderValue(15).Value(), // 1차 매수잔량
+		c.GetHeaderValue(25).Value(), // 1차 매도호가
+		c.GetHeaderValue(26).Value()) // 1차 매도잔량
+
+	if s.cnt > 100 {
+		// 100건이 넘을시 중단
+		s.cont = false
+	}
+	s.cnt++
+}
+
+func TestSubscribe(t *testing.T) {
+	tmp := &CpClass{}
+	tmp.Create("CpSysDib.CmeCurr")
+	defer tmp.Release()
+	fmt.Println(tmp)
+
+	evnt := &SubTestStruct{true, 0}
+	tmp.BindEvent(evnt)
+	fmt.Println(tmp)
+
+	tmp.SetInputValue(0, "101L9")
+	tmp.Subscribe()
+
+	fmt.Println("sub/pub start")
+
+	for evnt.cont == true {
+		// 메시지를 받다가 중간에 끊겼다가.
+		// 다시 메시지를 받았다가 끊겼다가 함
+		// 불안정함.. 아직 이유 모름
+		PumpWaitingMessage()
+		time.Sleep(1)
+	}
+	tmp.Unsubscribe()
+	tmp.UnbindEvent()
 }
 
 func TestCoUninitialize(t *testing.T) {

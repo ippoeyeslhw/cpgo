@@ -1,7 +1,8 @@
 package cpgo
 
 import (
-	//	"fmt"
+	"fmt"
+	"strings"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -15,6 +16,9 @@ var (
 	user32, _       = syscall.LoadLibrary("user32.dll")
 	pPeekMessage, _ = syscall.GetProcAddress(user32, "PeekMessageW")
 	//pDispatchMessage, _ = syscall.GetProcAddress(user32, "DispatchMessage")
+	IID_IDibEvents, _    = ole.CLSIDFromString("{B8944520-09C3-11D4-8232-00105A7C4F8C}")
+	IID_IDibSysEvents, _ = ole.CLSIDFromString("{60D7702A-57BA-4869-AF3F-292FDC909D75}")
+	IID_IDibTrEvents, _  = ole.CLSIDFromString("{8B55AD34-73A3-4C33-B8CD-C95ED13823CB}")
 )
 
 // 사이보스플러스의 콜백메서드 인터페이스
@@ -32,6 +36,9 @@ type CpClass struct {
 	cb     Receiver
 	point  *ole.IConnectionPoint
 	cookie uint32
+
+	// dll name
+	dll string
 }
 
 // 이벤트 수신을 위한 구조체
@@ -61,22 +68,20 @@ func (c *CpClass) Create(name string) {
 	if err != nil {
 		panic(err)
 	}
-	// _IDib interface
-	iid, err := ole.CLSIDFromString("{33518a10-0931-11d4-8231-00105a7c4f8c}")
-	if err != nil {
-		panic(err)
-	}
 	// unknown
 	c.unk, err = ole.CreateInstance(clsid, ole.IID_IUnknown)
 	if err != nil {
 		panic(err)
 	}
 	// get obj
-	//c.obj, err = c.unk.QueryInterface(ole.IID_IDispatch)
-	c.obj, err = c.unk.QueryInterface(iid)
+	c.obj, err = c.unk.QueryInterface(ole.IID_IDispatch)
 	if err != nil {
 		panic(err)
 	}
+
+	// get name
+	splits := strings.Split(name, ".")
+	c.dll = splits[0]
 }
 
 // 객체 헤제
@@ -102,10 +107,22 @@ func (c *CpClass) Release() {
 // 이벤트 지정
 func (c *CpClass) BindEvent(callback Receiver) {
 
+	var iid_evnt *ole.GUID
+
+	if c.dll == "DSCBO1" {
+		iid_evnt = IID_IDibEvents
+	} else if c.dll == "CpSysDib" {
+		iid_evnt = IID_IDibSysEvents
+	} else if c.dll == "CpTrade" {
+		iid_evnt = IID_IDibTrEvents
+	} else {
+		panic("이벤트 지정 실패")
+	}
+
 	if c.evnt == nil {
 		// Callback method binding
-		evnt := (new(dispCpEvent))
-		evnt.lpVtbl = (new(dispCpEventVtbl))
+		evnt := &dispCpEvent{}
+		evnt.lpVtbl = &dispCpEventVtbl{}
 		evnt.lpVtbl.pQueryInterface = syscall.NewCallback(dispQueryInterface)
 		evnt.lpVtbl.pAddRef = syscall.NewCallback(dispAddRef)
 		evnt.lpVtbl.pRelease = syscall.NewCallback(dispRelease)
@@ -118,12 +135,6 @@ func (c *CpClass) BindEvent(callback Receiver) {
 		c.evnt = evnt
 	}
 	c.cb = callback
-
-	// get event iid
-	dibevnt_iid, err := ole.CLSIDFromString("{B8944520-09C3-11D4-8232-00105A7C4F8C}")
-	if err != nil {
-		panic(err)
-	}
 
 	if c.point != nil {
 		// 이미 포인트가 지정되어 있었으면?
@@ -138,14 +149,15 @@ func (c *CpClass) BindEvent(callback Receiver) {
 	// get point
 	container := (*ole.IConnectionPointContainer)(unsafe.Pointer(unknown_con))
 	var point *ole.IConnectionPoint
-	err = container.FindConnectionPoint(dibevnt_iid, &point)
+
+	fmt.Println(iid_evnt)
+	err = container.FindConnectionPoint(iid_evnt, &point)
 	if err != nil {
 		panic(err)
 	}
 
 	// Advise
 	cookie, err := point.Advise((*ole.IUnknown)(unsafe.Pointer(c.evnt)))
-	//_, err = point.Advise((*ole.IUnknown)(unsafe.Pointer(evnt)))
 	container.Release()
 	if err != nil {
 		point.Release()
@@ -167,16 +179,12 @@ func (c *CpClass) UnbindEvent() {
 
 // 이하 콜백 이벤트 바인딩하기 위한 함수 선언들
 func dispQueryInterface(this *ole.IUnknown, iid *ole.GUID, punk **ole.IUnknown) uint32 {
-	s, _ := ole.StringFromCLSID(iid)
 	*punk = nil
 	if ole.IsEqualGUID(iid, ole.IID_IUnknown) ||
-		ole.IsEqualGUID(iid, ole.IID_IDispatch) {
-		dispAddRef(this)
-		*punk = this
-		return ole.S_OK
-	}
-	// _DibEvents GUID
-	if s == "{B8944520-09C3-11D4-8232-00105A7C4F8C}" {
+		ole.IsEqualGUID(iid, ole.IID_IDispatch) ||
+		ole.IsEqualGUID(iid, IID_IDibEvents) ||
+		ole.IsEqualGUID(iid, IID_IDibSysEvents) ||
+		ole.IsEqualGUID(iid, IID_IDibTrEvents) {
 		dispAddRef(this)
 		*punk = this
 		return ole.S_OK
