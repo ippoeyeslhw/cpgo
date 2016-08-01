@@ -1,7 +1,7 @@
 package cpgo
 
 import (
-	"fmt"
+	//"fmt"
 	"strings"
 	"sync"
 	"syscall"
@@ -150,7 +150,6 @@ func (c *CpClass) BindEvent(callback Receiver) {
 	container := (*ole.IConnectionPointContainer)(unsafe.Pointer(unknown_con))
 	var point *ole.IConnectionPoint
 
-	fmt.Println(iid_evnt)
 	err = container.FindConnectionPoint(iid_evnt, &point)
 	if err != nil {
 		panic(err)
