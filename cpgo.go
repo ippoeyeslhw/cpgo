@@ -3,7 +3,8 @@ package cpgo
 import (
 	//"fmt"
 	"strings"
-	"sync"
+	//"sync"
+	"runtime"
 	"syscall"
 	"unsafe"
 
@@ -260,8 +261,9 @@ func PumpWaitingMessage() int32 {
 
 	var msg ole.Msg
 
-	mutex := &sync.Mutex{}
-	mutex.Lock()
+	//mutex := &sync.Mutex{}
+	//mutex.Lock()
+	runtime.LockOSThread()
 	for {
 		r, _ := PeekMessage(&msg, 0, 0, 0, 1)
 		if r == 0 {
@@ -273,6 +275,7 @@ func PumpWaitingMessage() int32 {
 		}
 		ole.DispatchMessage(&msg)
 	}
-	mutex.Unlock()
+	//mutex.Unlock()
+	runtime.UnlockOSThread()
 	return ret
 }
