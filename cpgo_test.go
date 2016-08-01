@@ -10,6 +10,7 @@ import (
 
 func TestCoinitialize(t *testing.T) {
 	ole.CoInitialize(0)
+	// 사이보스 플러스에 로그인한 상태에서 테스트 진행
 }
 
 // 객체 생성 헤제 테스트
@@ -89,8 +90,9 @@ func TestPumpWaitingMessage(t *testing.T) {
 	fmt.Println(pPeekMessage)
 	for tmp.evnt.ref != 0 {
 		time.Sleep(1)
-		PumpWaitingMessage()
+		PumpWaitingMessages()
 	}
+	tmp.UnbindEvent()
 }
 
 type SubTestStruct struct {
@@ -113,6 +115,7 @@ func (s *SubTestStruct) Received(c *CpClass) {
 	s.cnt++
 }
 
+// sub/pub 통신 테스트
 func TestSubscribe(t *testing.T) {
 	tmp := &CpClass{}
 	tmp.Create("CpSysDib.CmeCurr")
@@ -123,16 +126,14 @@ func TestSubscribe(t *testing.T) {
 	tmp.BindEvent(evnt)
 	fmt.Println(tmp)
 
+	// 야간 CME 선물시장 밤에 테스트할것
 	tmp.SetInputValue(0, "101L9")
 	tmp.Subscribe()
 
 	fmt.Println("sub/pub start")
 
 	for evnt.cont == true {
-		// 메시지를 받다가 중간에 끊겼다가.
-		// 다시 메시지를 받았다가 끊겼다가 함
-		// 불안정함.. 아직 이유 모름
-		PumpWaitingMessage()
+		PumpWaitingMessages()
 		time.Sleep(1)
 	}
 	tmp.Unsubscribe()
