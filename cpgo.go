@@ -21,6 +21,10 @@ var (
 	IID_IDibSysEvents, _ = ole.CLSIDFromString("{60D7702A-57BA-4869-AF3F-292FDC909D75}")
 	IID_IDibTrEvents, _  = ole.CLSIDFromString("{8B55AD34-73A3-4C33-B8CD-C95ED13823CB}")
 	IID_CpCybosEvents, _ = ole.CLSIDFromString("{17F70631-56E5-40FC-B94F-44ADD3A850B1}")
+	// CpCybos limitTypes
+	LT_TRADE_REQUEST    = 0
+	LT_NONTRADE_REQUEST = 1
+	LT_SUBSCRIBE        = 2
 )
 
 // 사이보스플러스의 콜백메서드 인터페이스

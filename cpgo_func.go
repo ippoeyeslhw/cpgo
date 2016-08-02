@@ -7,6 +7,11 @@ import (
 	"github.com/go-ole/go-ole/oleutil"
 )
 
+// 사이보스플러스 Continue Property getter
+func (c *CpClass) GetContinue() (r *ole.VARIANT) {
+	return oleutil.MustGetProperty(c.obj, "Continue")
+}
+
 // 사이보스플러스 GetDibStatus
 func (c *CpClass) GetDibStatus() int16 {
 	r := oleutil.MustCallMethod(c.obj, "GetDibStatus")
@@ -63,4 +68,26 @@ func (c *CpClass) GetHeaderValue(typ int) (result *ole.VARIANT) {
 // 사이보스플러스 GetDataValue Wrapper
 func (c *CpClass) GetDataValue(typ int, idx int) (result *ole.VARIANT) {
 	return oleutil.MustCallMethod(c.obj, "GetDataValue", typ, idx)
+}
+
+// CpUtil
+
+// 사이보스플러스 CpUtil.CpCybos ServerType Property getter
+func (c *CpClass) GetIsConnect() (r *ole.VARIANT) {
+	return oleutil.MustGetProperty(c.obj, "IsConnect")
+}
+
+// 사이보스플러스 CpUtil.CpCybos ServerType Property getter
+func (c *CpClass) GetServerType() (r *ole.VARIANT) {
+	return oleutil.MustGetProperty(c.obj, "ServerType")
+}
+
+// 사이보스플러스 CpUtil.CpCybos LimitRequestRemainTime Property getter
+func (c *CpClass) GetLimitRequestRemainTime() (r *ole.VARIANT) {
+	return oleutil.MustGetProperty(c.obj, "LimitRequestRemainTime")
+}
+
+// 사이보스플러스 CpUtil.CpCybos GetLimitRemainCount Wrapper
+func (c *CpClass) GetLimitRemainCount(typ int) (r *ole.VARIANT) {
+	return oleutil.MustCallMethod(c.obj, "GetLimitRemainCount", typ)
 }

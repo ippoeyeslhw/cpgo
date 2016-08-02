@@ -140,6 +140,64 @@ func TestSubscribe(t *testing.T) {
 	tmp.UnbindEvent()
 }
 
+// continue test 이벤트 구조체
+type ContTestStruct struct {
+	isDone bool
+}
+
+func (s *ContTestStruct) Received(c *CpClass) {
+	count := c.GetHeaderValue(2).Value().(int16) // 수신개수
+	fmt.Println("response count: ", count)
+	for i := 0; i < int(count); i++ {
+		fmt.Println(
+			c.GetDataValue(1, i).Value(), // 종목코드
+			c.GetDataValue(4, i).Value()) // 내용
+	}
+	fmt.Println("cont value: ", c.GetContinue().Value())
+	if c.GetContinue().Value() == int32(1) { // 연속데이터 있음
+		fmt.Println("next request")
+		c.Request() // 재요청
+	} else {
+		s.isDone = true
+	}
+}
+
+func TestContinueRequest(t *testing.T) {
+	tmp := &CpClass{}
+	tmp.Create("CpSysDib.CpMarketWatch")
+	defer tmp.Release()
+	fmt.Println(tmp)
+
+	evnt := &ContTestStruct{false}
+	tmp.BindEvent(evnt)
+	fmt.Println(tmp)
+
+	// 연속조회  request 갯수제한 유의
+	tmp.SetInputValue(0, "*") // 전종목
+	tmp.SetInputValue(1, "2") // 공시정보
+	tmp.Request()
+
+	fmt.Println("continue req start")
+
+	for evnt.isDone == false {
+		PumpWaitingMessages()
+		time.Sleep(1)
+	}
+	tmp.UnbindEvent()
+}
+
+func TestCpCybos(t *testing.T) {
+	tmp := &CpClass{}
+	tmp.Create("CpUtil.CpCybos")
+	defer tmp.Release()
+	fmt.Println(tmp)
+
+	fmt.Println("isconnect: ", tmp.GetIsConnect().Value())
+	fmt.Println("servertype: ", tmp.GetServerType().Value())
+	fmt.Println("remain time: ", tmp.GetLimitRequestRemainTime().Value())
+	fmt.Println("remain Count: ", tmp.GetLimitRemainCount(LT_NONTRADE_REQUEST).Value())
+}
+
 func TestCoUninitialize(t *testing.T) {
 	ole.CoUninitialize()
 }
