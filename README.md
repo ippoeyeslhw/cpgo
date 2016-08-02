@@ -5,25 +5,25 @@ cybosplus(증권API) + golang 을 이용하여
 투자 분석 및 시스템트레이딩을 할수 있도록 만든 간단한 
 Wrapper 라이브러리 입니다.
 
-### 필요한것들
+# 필요한것들
  * 윈도우 운영체제
  * 사이보스플러스
  * golang (32bits)
  * [go-ole패키지](https://github.com/go-ole/go-ole)
 
-### 설치
+# 설치
 
 ```
 go get github.com/ippoeyeslhw/cpgo
 
 ```
 
-### 설명
+# 설명
 cpgo 는 사이보스플러스를 go언어에서 사용할수 있도록 Wrapping 한 것입니다.
 [go-ole패키지](https://github.com/go-ole/go-ole)를 기반으로 작성되었습니다.
 
 
-##### Import
+### Import
 go-ole패키지를 기반으로 작성되었으므로 많은 부분을 의존합니다.
 반드시 임포트하여야합니다.
 ```go
@@ -33,7 +33,7 @@ import (
 )
 ```
 
-##### 프로그램 시작
+### 프로그램 시작
 COM Object 프로그래밍을 할 것이므로 반드시 cointialize, uncoinitialize 호출
 해야합니다.
 ```go
@@ -41,7 +41,7 @@ COM Object 프로그래밍을 할 것이므로 반드시 cointialize, uncoinitia
 	defer ole.CoUninitialize()
 ```
 
-##### 객체생성
+### 객체생성
 도움말을 열어봤을때 좌측에 보이는 주요 네가지 라이브러리인
  * CpDib : 혹은 DSCBO1
  * CpSysDib
@@ -56,7 +56,7 @@ Create 메서드로 COM객체 생성을 Release 메서드로 헤제를 할수 �
 	defer stkmst.Release()
 ```
 
-##### 주요 인터페이스
+### 주요 인터페이스
 기본적인 동작을 위해 구현된 주요 인터페이스 메서드들입니다.
  * SetInputValue : 입력데이터 세팅
  * Request  :  Non-blocking 요청
@@ -73,7 +73,7 @@ Create 메서드로 COM객체 생성을 Release 메서드로 헤제를 할수 �
 	fmt.Println(stkmst.GetHeaderValue(1).Value())
 ```
 
-##### 이벤트처리
+### 이벤트처리
 Received 이벤트는 Receiver 인터페이스를 구현하면 됩니다.
 ```go
 type Receiver interface {
@@ -101,4 +101,4 @@ func (t *RqTestStruct) Received(c *CpClass) {
 PeekMessage 를 기반으로 동작하는 PumpWaitingMessages 함수를 제공합니다.
 
 
-### 예제
+# 예제
