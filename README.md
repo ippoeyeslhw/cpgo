@@ -10,6 +10,7 @@ Wrapper 라이브러리 입니다.
  * 사이보스플러스
  * golang (32bits)
  * [go-ole패키지](https://github.com/go-ole/go-ole)
+ * 사이보스플러스 [도움말(비공식)](http://cybosplus.github.io/)
 
 # 설치
 
