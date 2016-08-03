@@ -1,27 +1,32 @@
+/*
+cpgo는 go언어에서 사이보스플러스를 연동하기 위한 Wrapper 라이브러리입니다.
+이 라이브러리는 go-ole 패키지에 상당히 의존하고 있으므로 반드시 미리 설치해야
+합니다.
+
+*/
 package cpgo
 
 import (
-	//	"fmt"
-	"strings"
-	//"sync"
 	"runtime"
+	"strings"
 	"syscall"
 	"unsafe"
 
 	ole "github.com/go-ole/go-ole"
-	//"github.com/go-ole/go-ole/oleutil"
 )
 
 // peekmessage 로드, 이벤트 iid
 var (
 	user32, _       = syscall.LoadLibrary("user32.dll")
 	pPeekMessage, _ = syscall.GetProcAddress(user32, "PeekMessageW")
-	//pDispatchMessage, _ = syscall.GetProcAddress(user32, "DispatchMessage")
+
+	// 이벤트 IID
 	IID_IDibEvents, _    = ole.CLSIDFromString("{B8944520-09C3-11D4-8232-00105A7C4F8C}")
 	IID_IDibSysEvents, _ = ole.CLSIDFromString("{60D7702A-57BA-4869-AF3F-292FDC909D75}")
 	IID_IDibTrEvents, _  = ole.CLSIDFromString("{8B55AD34-73A3-4C33-B8CD-C95ED13823CB}")
 	IID_CpCybosEvents, _ = ole.CLSIDFromString("{17F70631-56E5-40FC-B94F-44ADD3A850B1}")
-	// CpCybos limitTypes
+
+	// CpCybos의 LimitType 값들
 	LT_TRADE_REQUEST    = 0
 	LT_NONTRADE_REQUEST = 1
 	LT_SUBSCRIBE        = 2
@@ -32,7 +37,7 @@ type Receiver interface {
 	Received(*CpClass)
 }
 
-// 사이보스플러스 객체를 구성하는 데이터묶음
+// 사이보스플러스 객체
 type CpClass struct {
 	unk  *ole.IUnknown
 	obj  *ole.IDispatch
@@ -69,6 +74,8 @@ type dispCpEventVtbl struct {
 }
 
 // 사이보스플러스 객체 생성
+// "Library.coclass" 문자열을 넣어 객체를 생성합니다.
+// "CpDib.StockMst" 와 같은 식으로 사용합니다.
 func (c *CpClass) Create(name string) {
 	// 이름 처리
 	splits := strings.Split(name, ".")
@@ -101,7 +108,7 @@ func (c *CpClass) Create(name string) {
 
 }
 
-// 객체 헤제
+// Create 메서드로 생성한 객체 헤제할떄 사용합니다.
 func (c *CpClass) Release() {
 	if c.unk != nil {
 		c.unk.Release()
@@ -121,7 +128,9 @@ func (c *CpClass) Release() {
 	}
 }
 
-// 이벤트 지정
+// 이벤트를 지정할때 사용합니다.
+// Receiver 인터페이스를 구현한 콜백을 지정하여
+// 이벤트 수신시 콜백을 호출되게 지정할수 있습니다.
 func (c *CpClass) BindEvent(callback Receiver) {
 
 	var iid_evnt *ole.GUID
@@ -185,7 +194,7 @@ func (c *CpClass) BindEvent(callback Receiver) {
 	c.cookie = cookie
 }
 
-// 이벤트 헤제
+// 지정된 이벤트 헤제
 func (c *CpClass) UnbindEvent() {
 	if c.point != nil {
 		c.point.Unadvise(c.cookie)
@@ -260,7 +269,7 @@ func dispInvoke(this *ole.IDispatch, dispid int, riid *ole.GUID, lcid int, flags
 	return ole.E_NOTIMPL
 }
 
-// PeekMessage golang 구현 (ole패키지의 GetMessage 대용, Non-blocking)
+// PeekMessage 구현
 func PeekMessage(msg *ole.Msg, hwnd uint32, MsgFilterMin uint32, MsgFilterMax uint32, RemoveMsg uint32) (ret int32, err error) {
 	r0, _, err := syscall.Syscall6(uintptr(pPeekMessage), 5,
 		uintptr(unsafe.Pointer(msg)),
@@ -275,6 +284,7 @@ func PeekMessage(msg *ole.Msg, hwnd uint32, MsgFilterMin uint32, MsgFilterMax ui
 }
 
 // 메시지 펌핑 (파이선 pythoncom.PumpWatingMessges 의 golang구현)
+// WM_QUIT 로 종료되었을시 int32(1) 이 리턴됩니다.
 func PumpWaitingMessages() int32 {
 	ret := int32(0)
 
