@@ -296,3 +296,24 @@ func main() {
 
 
 ```
+
+
+### 이벤트수신문제
+
+이벤트 수신이 중간에 끊겼다 연결되었다 한다면
+OS Thread가 중간에 스위칭 되었을 가능성이 있습니다.
+윈도우 메세지는 이벤트싱크를 맺은 Thread에게로만 전달됩니다.
+
+```go
+runtime.GOMAXPROCS(1)
+```
+이것을 사용하여 이런 현상을 방지합니다.
+
+```go
+for evnt.cont == true {
+    cpgo.PumpWaitingMessages()
+    //time.Sleep(1) // Busy loop
+    }
+```
+Sleep으로 쉬게 하지 않고 매우 바쁘도록 이벤트 루프를 돌립니다.
+위 두 작업으로 안정적으로 돌아가도록 해줍니다.
