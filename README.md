@@ -9,6 +9,7 @@ Wrapper 라이브러리 입니다.
  * 윈도우 운영체제
  * 사이보스플러스
  * golang (32bits)
+ * gcc [MinGW](http://www.mingw.org/)
  * [go-ole패키지](https://github.com/go-ole/go-ole)
  * 사이보스플러스 [도움말(비공식)](http://cybosplus.github.io/)
 
@@ -300,20 +301,74 @@ func main() {
 
 ### 이벤트수신문제
 
-이벤트 수신이 중간에 끊겼다 연결되었다 한다면
-OS Thread가 중간에 스위칭 되었을 가능성이 있습니다.
-윈도우 메세지는 이벤트싱크를 맺은 Thread에게로만 전달됩니다.
+Subscribe 통신방식으로 이벤트 수신을 지속적으로 받다보면
+이벤트 수신이 중간에 끊어졌다가 다시 연결되었다가 하는 현상이 발견됩니다.
+COM 객체는 이벤트 싱크를 맺은 윈도우 스레드에만 메세지를 전달합니다.
+Go언어의 스케줄러는 다수의 OS Thread 와 다수의 Goroutine 을 가지고
+스케줄링 하여 윈도우 스레드가 중간에 바뀌어 끊어지는 것입니다.
+이를 방지하기 위해 윈도우 스레드 함수 Wrapper를 사용할수 있습니다.
 
 ```go
-runtime.GOMAXPROCS(1)
+type Background func(uintptr) uintptr
 ```
-이것을 사용하여 이런 현상을 방지합니다.
+uintptr 을 인자로 받고 uintptr을 리턴하는 함수를 선언합니다.
 
 ```go
-for evnt.cont == true {
-    cpgo.PumpWaitingMessages()
-    //time.Sleep(1) // Busy loop
-    }
+func CreateThread(fnc Background, arg1 uintptr) (ret int32, err error)
 ```
-Sleep으로 쉬게 하지 않고 매우 바쁘도록 이벤트 루프를 돌립니다.
-위 두 작업으로 안정적으로 돌아가도록 해줍니다.
+함수와 인자로 넘겨줄 값을 넘겨주어 스레드를 생성합니다.
+
+
+```go
+type CmeCurEvnt struct {
+}
+
+func (ce *CmeCurEvnt) Received(c *cpgo.CpClass) {
+	fmt.Printf("[%v] (%f)%d , (%f)%d\n",
+		time.Now(),
+		c.GetHeaderValue(14).Value(), // 1차 매수호가
+		c.GetHeaderValue(15).Value(), // 1차 매수잔량
+		c.GetHeaderValue(25).Value(), // 1차 매도호가
+		c.GetHeaderValue(26).Value()) // 1차 매도잔량
+}
+
+func loop(p uintptr) uintptr {
+	// 윈도우 스레드에서 돌아갈 코드
+	ole.CoInitialize(0)
+	defer ole.CoUninitialize()
+
+	// create cp class
+	tmp := &cpgo.CpClass{}
+	tmp.Create("CpSysDib.CmeCurr")
+	defer tmp.Release()
+
+	// event binding
+	evnt := &CmeCurEvnt{}
+	tmp.BindEvent(evnt)
+	defer tmp.UnbindEvent()
+
+	// set input values
+	tmp.SetInputValue(0, "101M3")
+	tmp.Subscribe()
+	defer tmp.Unsubscribe()
+
+	for {
+		cpgo.PumpWaitingMessages()
+		time.Sleep(1)
+	}
+
+	return 0
+}
+
+func main() {
+
+	// 스레드 생성
+	cpgo.CreateThread(loop, 0)
+
+	// 메인스레드 Waiting
+	for { 
+		time.Sleep(time.Millisecond * 10)
+	}
+}
+```
+

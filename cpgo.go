@@ -7,6 +7,8 @@ cpgo는 go언어에서 사이보스플러스를 연동하기 위한 Wrapper 라�
 package cpgo
 
 import (
+	"C"
+	"fmt"
 	"runtime"
 	"strings"
 	"syscall"
@@ -17,8 +19,10 @@ import (
 
 // peekmessage 로드, 이벤트 iid
 var (
-	user32, _       = syscall.LoadLibrary("user32.dll")
-	pPeekMessage, _ = syscall.GetProcAddress(user32, "PeekMessageW")
+	user32, _        = syscall.LoadLibrary("user32.dll")
+	kernl32, _       = syscall.LoadLibrary("kernel32.dll")
+	pCreateThread, _ = syscall.GetProcAddress(kernl32, "CreateThread")
+	pPeekMessage, _  = syscall.GetProcAddress(user32, "PeekMessageW")
 
 	// 이벤트 IID
 	IID_IDibEvents, _    = ole.CLSIDFromString("{B8944520-09C3-11D4-8232-00105A7C4F8C}")
@@ -267,6 +271,24 @@ func dispInvoke(this *ole.IDispatch, dispid int, riid *ole.GUID, lcid int, flags
 		}
 	}
 	return ole.E_NOTIMPL
+}
+
+type Background func(uintptr) uintptr
+
+// 윈도우스레드 구현
+func CreateThread(fnc Background, arg1 uintptr) (ret int32, err error) {
+	// create window thread
+
+	r0, _, err := syscall.Syscall6(uintptr(pCreateThread), 6,
+		0, 0,
+		syscall.NewCallback(fnc),
+		uintptr(arg1), 0, 0)
+	if r0 == 0 {
+		fmt.Println(err)
+		panic("Create Window Thread Error")
+	}
+	ret = int32(r0)
+	return
 }
 
 // PeekMessage 구현

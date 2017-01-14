@@ -95,6 +95,32 @@ func TestPumpWaitingMessage(t *testing.T) {
 	tmp.UnbindEvent()
 }
 
+// GetFuturecode test
+
+func GetFirstCode() string {
+	tmp := &CpClass{}
+	tmp.Create("CpUtil.CpFutureCode")
+	defer tmp.Release()
+	cnt := tmp.GetCount().Value().(int16)
+	if int(cnt) > 0 {
+		return tmp.GetData(0, 0).Value().(string)
+	}
+	return ""
+}
+func TestGetFutureCodes(t *testing.T) {
+	tmp := &CpClass{}
+	tmp.Create("CpUtil.CpFutureCode")
+	defer tmp.Release()
+
+	cnt := tmp.GetCount().Value().(int16)
+	fmt.Println(cnt)
+
+	for i := 0; i < int(cnt); i++ {
+		fmt.Println(tmp.GetData(0, i).Value(), tmp.GetData(1, i).Value())
+	}
+	fmt.Println(GetFirstCode())
+}
+
 type SubTestStruct struct {
 	cont bool
 	cnt  int
@@ -108,8 +134,8 @@ func (s *SubTestStruct) Received(c *CpClass) {
 		c.GetHeaderValue(25).Value(), // 1차 매도호가
 		c.GetHeaderValue(26).Value()) // 1차 매도잔량
 
-	if s.cnt > 100 {
-		// 100건이 넘을시 중단
+	if s.cnt > 20 {
+		// 20건이 넘을시 중단
 		s.cont = false
 	}
 	s.cnt++
@@ -117,6 +143,7 @@ func (s *SubTestStruct) Received(c *CpClass) {
 
 // sub/pub 통신 테스트
 func TestSubscribe(t *testing.T) {
+	return
 	tmp := &CpClass{}
 	tmp.Create("CpSysDib.CmeCurr")
 	defer tmp.Release()
@@ -127,7 +154,7 @@ func TestSubscribe(t *testing.T) {
 	fmt.Println(tmp)
 
 	// 야간 CME 선물시장 밤에 테스트할것
-	tmp.SetInputValue(0, "101L9")
+	tmp.SetInputValue(0, GetFirstCode())
 	tmp.Subscribe()
 
 	fmt.Println("sub/pub start")
@@ -163,6 +190,7 @@ func (s *ContTestStruct) Received(c *CpClass) {
 }
 
 func TestContinueRequest(t *testing.T) {
+	return
 	tmp := &CpClass{}
 	tmp.Create("CpSysDib.CpMarketWatch")
 	defer tmp.Release()
@@ -196,6 +224,54 @@ func TestCpCybos(t *testing.T) {
 	fmt.Println("servertype: ", tmp.GetServerType().Value())
 	fmt.Println("remain time: ", tmp.GetLimitRequestRemainTime().Value())
 	fmt.Println("remain Count: ", tmp.GetLimitRemainCount(LT_NONTRADE_REQUEST).Value())
+}
+
+// 윈도우 스레드 테스트 (Not goroutine)
+type CmeCurEvnt struct {
+}
+
+func (ce *CmeCurEvnt) Received(c *cpgo.CpClass) {
+	fmt.Printf("[%v] (%f)%d , (%f)%d\n",
+		time.Now(),
+		c.GetHeaderValue(14).Value(), // 1차 매수호가
+		c.GetHeaderValue(15).Value(), // 1차 매수잔량
+		c.GetHeaderValue(25).Value(), // 1차 매도호가
+		c.GetHeaderValue(26).Value()) // 1차 매도잔량
+}
+
+func loop(p uintptr) uintptr {
+	ole.CoInitialize(0)
+	defer ole.CoUninitialize()
+
+	// create cp class
+	tmp := &cpgo.CpClass{}
+	tmp.Create("CpSysDib.CmeCurr")
+	defer tmp.Release()
+
+	// event binding
+	evnt := &CmeCurEvnt{}
+	tmp.BindEvent(evnt)
+	defer tmp.UnbindEvent()
+
+	// set input values
+	tmp.SetInputValue(0, "101M3")
+	tmp.Subscribe()
+	defer tmp.Unsubscribe()
+
+	for {
+		cpgo.PumpWaitingMessages()
+		time.Sleep(1)
+	}
+
+	return 0
+}
+
+func TestWindowThread(t *testing.T) {
+	cpgo.CreateThread(loop, 0)
+
+	for {
+		time.Sleep(time.Millisecond * 10)
+	}
 }
 
 func TestCoUninitialize(t *testing.T) {
